@@ -1,0 +1,34 @@
+<%- include('partials/header') %>
+<%- include('partials/navbar', { activePage: 'courses' }) %>
+
+<div class="container mt-4">
+    <h2>Enroll in Courses</h2>
+    <form action="/enroll" method="POST">
+        <div class="mb-3">
+            <label for="subjectId" class="form-label">Select Subject</label>
+            <select id="subjectId" name="subjectId" class="form-select">
+                <% subjects.forEach(subject => { %>
+                    <option value="<%= subject.id %>">
+                        <%= subject.name %> (<%= subject.type %>)
+                    </option>
+                <% }) %>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Enroll</button>
+    </form>
+
+    <h3 class="mt-4">Enrolled Subjects</h3>
+    <ul class="list-group">
+        <% enrolledSubjects.forEach(subject => { %>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <%= subject.name %>
+                <form action="/unenroll" method="POST" class="d-inline">
+                    <input type="hidden" name="subjectId" value="<%= subject.id %>">
+                    <button type="submit" class="btn btn-danger btn-sm">Unenroll</button>
+                </form>
+            </li>
+        <% }) %>
+    </ul>
+</div>
+
+<%- include('partials/footer') %>

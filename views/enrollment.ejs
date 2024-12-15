@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enrollment</title>
+    <!-- Include Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            background-color: #343a40;
+        }
+        .navbar a {
+            color: #fff !important;
+        }
+        .container {
+            margin-top: 40px;
+        }
+        .card {
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background-color: #007bff;
+            color: white;
+            font-size: 1.25rem;
+        }
+        .subject-list {
+            margin-top: 20px;
+        }
+        .btn-primary {
+            width: 100%;
+            background-color: #007bff;
+            border: none;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .confirmation-button {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+        }
+        .confirmation-button:hover {
+            background-color: #c82333;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <a class="navbar-brand" href="#">Student Portal</a>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/dashboard">Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/enrollment">Enrollment</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/logout">Logout</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    
+
+    <div class="container">
+        <h2 class="text-center mb-4">Enrollment Portal for <%= user.name %></h2>
+
+        <!-- Available Subjects for Enrollment -->
+        <div class="card">
+            <div class="card-header">
+                Available Subjects
+            </div>
+            <div class="card-body">
+                <% if (subjects.length > 0) { %>
+                    <form action="/enroll" method="POST">
+                        <div class="form-group">
+                            <label for="subjectId">Select a Subject</label>
+                            <select name="subjectId" id="subjectId" class="form-control" required>
+                                <% subjects.forEach(subject => { %>
+                                    <option value="<%= subject.id %>">
+                                        <%= subject.name %> (<%= subject.type %>)
+                                    </option>
+                                <% }) %>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Enroll</button>
+                    </form>
+                <% } else { %>
+                    <p class="alert alert-info">No available subjects for your course.</p>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Enrolled Subjects -->
+        <div class="card subject-list">
+            <div class="card-header">
+                Your Enrolled Subjects
+            </div>
+            <div class="card-body">
+                <% if (enrolledSubjects.length > 0) { %>
+                    <ul class="list-group">
+                        <% enrolledSubjects.forEach(subject => { %>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <%= subject.name %>
+                                <form action="/unenroll" method="POST" class="d-inline" onsubmit="return confirmUnenroll();">
+                                    <input type="hidden" name="subjectId" value="<%= subject.id %>">
+                                    <button type="submit" class="btn confirmation-button">Unenroll</button>
+                                </form>
+                            </li>
+                        <% }); %>
+                    </ul>
+                <% } else { %>
+                    <p class="alert alert-info">You have not enrolled in any subjects yet.</p>
+                <% } %>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><a href="/dashboard">Go to Dashboard</a></p>
+        </div>
+    </div>
+
+    <script>
+        function confirmUnenroll() {
+            return confirm('Are you sure you want to unenroll from this subject?');
+        }
+    </script>
+
+    <!-- Include Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,21 @@
+<%- include('partials/header') %>
+<%- include('partials/navbar', { activePage: 'profile' }) %>
+
+<div class="container mt-4">
+    <h2>My Profile</h2>
+    <div class="card p-4 shadow-sm">
+        <div class="row">
+            <div class="col-md-4 text-center">
+                <img src="/images/<%= user.profile_picture %>" alt="Profile Picture" class="img-thumbnail" style="width: 150px; height: 150px;">
+            </div>
+            <div class="col-md-8">
+                <p><strong>Name:</strong> <%= user.name %></p>
+                <p><strong>Email:</strong> <%= user.email %></p>
+                <p><strong>Course:</strong> <%= user.course %></p>
+                <a href="/logout" class="btn btn-danger">Logout</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>
