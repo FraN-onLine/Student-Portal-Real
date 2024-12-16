@@ -8,7 +8,7 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(session({
-    secret: 'your-secret-key',
+    secret: 'AHHHHHAHHHAHHHAHHHstayinalive',
     resave: false,
     saveUninitialized: true
 }));
@@ -30,12 +30,13 @@ db.connect((err) => {
 });
 
 function isAuthenticated(req, res, next) {
-    if (req.session.userId) {
-        return next();
+    if (req.session && req.session.userId) {
+        next(); // User is authenticated
     } else {
-        return res.redirect('/login');
+        res.redirect('/login'); // Redirect to login if not authenticated
     }
 }
+
 
 // Serve static files (e.g., CSS, JS)
 app.use(express.static('public'));
@@ -130,6 +131,7 @@ app.post('/login', (req, res) => {
             req.session.userId = user.id;
             req.session.userName = user.name;
             req.session.userCourse = user.course;
+            req.session.user = user;
             res.redirect('/dashboard');
         });
     });
@@ -167,69 +169,88 @@ app.get('/dashboard', isAuthenticated, (req, res) => {
 });
 
 // Assuming these helper functions interact with your database:
-const { getAvailableSubjects, getEnrolledSubjects, enrollUserInSubject, unenrollUserFromSubject } = require('./public/subjects');
+const { getAvailableSubjects, getEnrolledSubjects, enrollUserInSubject, unenrollUserFromSubject } = require('./models/subjects');
 
 
 // GET /enrollment - Display enrollment page
 app.get('/enrollment', isAuthenticated, async (req, res) => {
-    console.log('Enrollment route hit');
     try {
         const user = req.session.user;
 
-      
-        const availableSubjects = await getAvailableSubjects(user.course); // All subjects for the user's course
-        const enrolledSubjects = await getEnrolledSubjects(user.id);       // Subjects the user is enrolled in
+        if (!user) {
+            console.error('User not found in session');
+            return res.redirect('/login');
+        }
 
+        // Fetch subjects for the user's course
+        const availableSubjects = await getAvailableSubjects(user.userCourse);
+
+        // Fetch subjects the user is already enrolled in
+        const enrolledSubjects = await getEnrolledSubjects(user.userId);
+
+        // Pass data to the enrollment view
         res.render('enrollment', {
             user: user,
             subjects: availableSubjects,
             enrolledSubjects: enrolledSubjects
         });
     } catch (error) {
-        console.error('Error fetching enrollment data:', error);
+        console.error('Error loading enrollment page:', error);
         res.status(500).send('An error occurred while loading the enrollment page.');
     }
 });
 
+
+
 // POST /enroll - Handle subject enrollment
 app.post('/enroll', isAuthenticated, async (req, res) => {
     try {
-        const userId = req.session.user.id; // Current user's ID
-        const subjectId = req.body.subjectId; // Selected subject ID from the form
+        const userId = req.session.user.id;
+        const subjectId = req.body.subjectId;
 
-        // Enroll the user in the selected subject
+        if (!subjectId) {
+            return res.status(400).send('No subject selected.');
+        }
+
         const success = await enrollUserInSubject(userId, subjectId);
 
         if (success) {
-            return res.redirect('/enrollment'); // Reload the enrollment page
+            console.log(`User ${userId} successfully enrolled in subject ${subjectId}`);
+            return res.redirect('/enrollment');
         } else {
-            return res.status(400).send('Failed to enroll in the selected subject.');
+            return res.status(400).send('Failed to enroll in the subject.');
         }
     } catch (error) {
         console.error('Error enrolling in subject:', error);
-        res.status(500).send('An error occurred while enrolling in the subject.');
+        res.status(500).send('An error occurred during enrollment.');
     }
 });
+
 
 // POST /unenroll - Handle subject unenrollment
 app.post('/unenroll', isAuthenticated, async (req, res) => {
     try {
-        const userId = req.session.user.id; // Current user's ID
-        const subjectId = req.body.subjectId; // Selected subject ID to unenroll from
+        const userId = req.session.user.id;
+        const subjectId = req.body.subjectId;
 
-        // Unenroll the user from the selected subject
+        if (!subjectId) {
+            return res.status(400).send('No subject selected for unenrollment.');
+        }
+
         const success = await unenrollUserFromSubject(userId, subjectId);
 
         if (success) {
-            return res.redirect('/enrollment'); // Reload the enrollment page
+            console.log(`User ${userId} successfully unenrolled from subject ${subjectId}`);
+            return res.redirect('/enrollment');
         } else {
-            return res.status(400).send('Failed to unenroll from the selected subject.');
+            return res.status(400).send('Failed to unenroll from the subject.');
         }
     } catch (error) {
         console.error('Error unenrolling from subject:', error);
-        res.status(500).send('An error occurred while unenrolling from the subject.');
+        res.status(500).send('An error occurred during unenrollment.');
     }
 });
+
 
 
 // Logout Route
