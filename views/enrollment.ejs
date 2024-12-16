@@ -75,23 +75,23 @@
 
     <div class="container">
         <h2 class="text-center mb-4">Enrollment Portal for <%= user.name %></h2>
-
+    
         <!-- Available Subjects for Enrollment -->
         <div class="card">
             <div class="card-header">
                 Available Subjects
             </div>
             <div class="card-body">
-                <% if (subjects && subjects.length > 0) { %>
+                <% if (subjects.length > 0) { %>
                     <form action="/enroll" method="POST">
                         <div class="form-group">
                             <label for="subjectId">Select a Subject</label>
                             <select name="subjectId" id="subjectId" class="form-control" required>
                                 <% subjects.forEach(subject => { %>
                                     <option value="<%= subject.id %>">
-                                        <%= subject.name %> (<%= subject.type %>)
+                                        <%= subject.name %> (<%= subject.course_code %>) - <%= subject.type %>
                                     </option>
-                                <% }) %>
+                                <% }); %>
                             </select>
                         </div>
                         <button type="submit" class="btn btn-primary">Enroll</button>
@@ -101,18 +101,18 @@
                 <% } %>
             </div>
         </div>
-
+    
         <!-- Enrolled Subjects -->
         <div class="card subject-list">
             <div class="card-header">
                 Your Enrolled Subjects
             </div>
             <div class="card-body">
-                <% if (enrolledSubjects && enrolledSubjects.length > 0) { %>
+                <% if (enrolledSubjects.length > 0) { %>
                     <ul class="list-group">
                         <% enrolledSubjects.forEach(subject => { %>
                             <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <%= subject.name %> (<%= subject.type %>)
+                                <%= subject.name %> (<%= subject.course_code %>)
                                 <form action="/unenroll" method="POST" class="d-inline" onsubmit="return confirmUnenroll();">
                                     <input type="hidden" name="subjectId" value="<%= subject.id %>">
                                     <button type="submit" class="btn confirmation-button">Unenroll</button>
@@ -125,18 +125,18 @@
                 <% } %>
             </div>
         </div>
-
+    
         <div class="footer">
             <p><a href="/dashboard">Go to Dashboard</a></p>
         </div>
     </div>
-
+    
     <script>
         function confirmUnenroll() {
             return confirm('Are you sure you want to unenroll from this subject?');
         }
     </script>
-
+    
     <!-- Include Bootstrap JS and dependencies -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>

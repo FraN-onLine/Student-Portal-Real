@@ -19,15 +19,22 @@
         .dashboard-container {
             padding: 40px;
         }
-        .form-container, .info-container {
+        .profile-section, .info-container, .form-container {
             background-color: #fff;
             padding: 30px;
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             margin-bottom: 30px;
         }
-        .form-container h3, .info-container h3 {
+        .profile-section img {
+            max-width: 100%;
+            border-radius: 8px;
+        }
+        .profile-section h3 {
             text-align: center;
+            margin-bottom: 20px;
+        }
+        .form-container h3, .info-container h3 {
             margin-bottom: 20px;
         }
         .btn {
@@ -61,43 +68,57 @@
             </ul>
         </div>
     </nav>
-    
 
     <div class="container dashboard-container">
-        <h2 class="text-center">Welcome, <%= user.name %></h2>
+        <div class="row">
+            <!-- Profile Section -->
+            <div class="col-md-4 profile-section">
+                <h3>Your Profile</h3>
+                <% if (user.profile_picture) { %>
+                    <img src="<%= user.profile_picture %>" alt="Profile Picture" class="img-thumbnail">
+                <% } else { %>
+                    <img src="/default-profile.png" alt="Default Profile Picture" class="img-thumbnail">
+                <% } %>
+                <p class="text-center mt-3"><strong><%= user.name %></strong></p>
+            </div>
 
-        <!-- User Information Section -->
-        <div class="info-container">
-            <h3>Your Information</h3>
-            <p><strong>Name:</strong> <%= user.name %></p>
-            <p><strong>Email:</strong> <%= user.email %></p>
-            <p><strong>Course:</strong> <%= user.course %></p>
-            <p><strong>Enrolled Subjects:</strong> <%= user.enrolledSubjects.length > 0 ? user.enrolledSubjects.join(', ') : 'None' %></p>
-        </div>
+            <!-- Information Section -->
+            <div class="col-md-8">
+                <!-- User Information -->
+                <div class="info-container">
+                    <h3>Your Information</h3>
+                    <p><strong>Name:</strong> <%= user.name %></p>
+                    <p><strong>Email:</strong> <%= user.email %></p>
+                    <p><strong>Course:</strong> <%= user.course %></p>
+                    <p><strong>Address:</strong> <%= user.address || 'Not provided' %></p>
+                    <p><strong>Phone Number:</strong> <%= user.phone_number || 'Not provided' %></p>
+                </div>
 
-        <!-- Edit Information Section -->
-        <div class="form-container">
-            <h3>Edit Your Information</h3>
-            <form action="/dashboard/edit" method="POST">
-                <div class="form-group">
-                    <label for="name">Name</label>
-                    <input type="text" id="name" name="name" class="form-control" value="<%= user.name %>" required>
+                <!-- Edit Information Form -->
+                <div class="form-container">
+                    <h3>Edit Your Information</h3>
+                    <form action="/dashboard/edit" method="POST" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="address">Address</label>
+                            <input type="text" id="address" name="address" class="form-control" value="<%= user.address || '' %>">
+                        </div>
+                        <div class="form-group">
+                            <label for="phone_number">Phone Number</label>
+                            <input type="text" id="phone_number" name="phone_number" class="form-control" value="<%= user.phone_number || '' %>">
+                        </div>
+                        <div class="form-group">
+                            <label for="profile_picture">Profile Picture</label>
+                            <input type="file" id="profile_picture" name="profile_picture" class="form-control">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </form>
                 </div>
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" class="form-control" value="<%= user.email %>" required>
-                </div>
-                <div class="form-group">
-                    <label for="course">Course</label>
-                    <input type="text" id="course" name="course" class="form-control" value="<%= user.course %>" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Save Changes</button>
-            </form>
+            </div>
         </div>
     </div>
 
     <div class="footer">
-        <p>Don’t have an account? <a href="/register">Register here</a></p>
+        <p><a href="/enrollment">Go to Enrollment</a> | <a href="/logout">Logout</a></p>
     </div>
 
     <!-- Include Bootstrap JS and dependencies -->

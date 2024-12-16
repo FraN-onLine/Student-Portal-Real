@@ -3,6 +3,8 @@ const mysql = require('mysql2');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
 const app = express();
+const multer = require('multer');
+const path = require('path');
 
 // Middleware
 app.use(express.urlencoded({ extended: true }));
@@ -41,6 +43,8 @@ function isAuthenticated(req, res, next) {
 // Serve static files (e.g., CSS, JS)
 app.use(express.static('public'));
 app.use(express.static('models'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // EJS Setup
 app.set('view engine', 'ejs');
 
@@ -183,10 +187,10 @@ app.get('/enrollment', isAuthenticated, async (req, res) => {
         }
 
         // Fetch subjects for the user's course
-        const availableSubjects = await getAvailableSubjects(user.userCourse);
+        const availableSubjects = await getAvailableSubjects(user.course, user.id);
 
         // Fetch subjects the user is already enrolled in
-        const enrolledSubjects = await getEnrolledSubjects(user.userId);
+        const enrolledSubjects = await getEnrolledSubjects(user.id);
 
         // Pass data to the enrollment view
         res.render('enrollment', {
@@ -204,54 +208,40 @@ app.get('/enrollment', isAuthenticated, async (req, res) => {
 
 // POST /enroll - Handle subject enrollment
 app.post('/enroll', isAuthenticated, async (req, res) => {
+    const userId = req.session.user.id; // Get the logged-in user ID
+    const subjectId = req.body.subjectId; // Get the subject ID from the form
+
     try {
-        const userId = req.session.user.id;
-        const subjectId = req.body.subjectId;
-
-        if (!subjectId) {
-            return res.status(400).send('No subject selected.');
-        }
-
         const success = await enrollUserInSubject(userId, subjectId);
-
         if (success) {
-            console.log(`User ${userId} successfully enrolled in subject ${subjectId}`);
-            return res.redirect('/enrollment');
+            res.redirect('/enrollment');
         } else {
-            return res.status(400).send('Failed to enroll in the subject.');
+            res.status(400).send('Unable to enroll in the selected subject.');
         }
     } catch (error) {
-        console.error('Error enrolling in subject:', error);
-        res.status(500).send('An error occurred during enrollment.');
+        console.error('Error enrolling user:', error);
+        res.status(500).send('An error occurred while enrolling in the subject.');
     }
 });
 
 
 // POST /unenroll - Handle subject unenrollment
 app.post('/unenroll', isAuthenticated, async (req, res) => {
+    const userId = req.session.user.id; // Get the logged-in user ID
+    const subjectId = req.body.subjectId; // Get the subject ID from the form
+
     try {
-        const userId = req.session.user.id;
-        const subjectId = req.body.subjectId;
-
-        if (!subjectId) {
-            return res.status(400).send('No subject selected for unenrollment.');
-        }
-
         const success = await unenrollUserFromSubject(userId, subjectId);
-
         if (success) {
-            console.log(`User ${userId} successfully unenrolled from subject ${subjectId}`);
-            return res.redirect('/enrollment');
+            res.redirect('/enrollment');
         } else {
-            return res.status(400).send('Failed to unenroll from the subject.');
+            res.status(400).send('Unable to unenroll from the selected subject.');
         }
     } catch (error) {
-        console.error('Error unenrolling from subject:', error);
-        res.status(500).send('An error occurred during unenrollment.');
+        console.error('Error unenrolling user:', error);
+        res.status(500).send('An error occurred while unenrolling from the subject.');
     }
 });
-
-
 
 // Logout Route
 app.get('/logout', (req, res) => {
@@ -262,25 +252,76 @@ app.get('/logout', (req, res) => {
         res.redirect('/login');
     });
 });
-
-app.post('/update-profile', isAuthenticated, (req, res) => {
-    const userId = req.session.userId;
-    const { name, email, course } = req.body;
-
-    db.query(
-        'UPDATE users SET name = ?, email = ?, course = ? WHERE id = ?',
-        [name, email, course, userId],
-        (err) => {
-            if (err) {
-                console.error("Error updating user profile:", err);
-                return res.status(500).send('Server Error');
-            }
-            res.redirect('/dashboard'); // Redirect back to dashboard after update
+// Multer Configuration for File Uploads
+const upload = multer({
+    dest: 'public/uploads/',
+    fileFilter: (req, file, cb) => {
+        const allowedExtensions = ['.jpg', '.jpeg', '.png'];
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (!allowedExtensions.includes(ext)) {
+            return cb(new Error('Only .jpg, .jpeg, and .png files are allowed!'));
         }
-    );
+        cb(null, true);
+    },
+    limits: { fileSize: 5 * 1024 * 1024 }, // Limit file size to 5 MB
 });
 
+app.post('/dashboard/edit', upload.single('profile_picture'), (req, res) => {
+    const { address, phone_number } = req.body;
+    const userId = req.session.user.id; // Assuming user ID is stored in session
 
+    let profile_picture = req.session.user.profile_picture;
+    if (req.file) {
+        profile_picture = `/uploads/${req.file.filename}`;
+    }
+
+    // Validation
+    if (address && address.length > 255) {
+        return res.status(400).send('Address must be under 255 characters.');
+    }
+
+    if (phone_number && !/^\+?\d{10,15}$/.test(phone_number)) {
+        return res.status(400).send('Phone number must be valid and between 10 to 15 digits.');
+    }
+
+    // Build Update Query Dynamically
+    const updates = [];
+    const params = [];
+    if (address) {
+        updates.push('address = ?');
+        params.push(address);
+    }
+    if (phone_number) {
+        updates.push('phone_number = ?');
+        params.push(phone_number);
+    }
+    if (req.file) {
+        updates.push('profile_picture = ?');
+        params.push(profile_picture);
+    }
+
+    if (updates.length === 0) {
+        return res.status(400).send('No valid fields to update.');
+    }
+
+    params.push(userId);
+
+    const sql = `UPDATE users SET ${updates.join(', ')} WHERE id = ?`;
+
+    con.query(sql, params, (err, results) => {
+        if (err) {
+            console.error('Error updating profile:', err);
+            return res.status(500).send('An error occurred while updating your profile.');
+        }
+
+        // Update session with new values
+        if (address) req.session.user.address = address;
+        if (phone_number) req.session.user.phone_number = phone_number;
+        if (req.file) req.session.user.profile_picture = profile_picture;
+
+        res.redirect('/dashboard');
+    });
+});
 
 // Server Setup
 const PORT = process.env.PORT || 3000;

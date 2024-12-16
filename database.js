@@ -1,10 +1,15 @@
-const mysql = require('mysql2/promise');
+const mysql = require('mysql2');
 
-const db = mysql.createPool({
-    host: 'localhost',        // Replace with your database host
-    user: 'root',             // Replace with your database username
-    password: 'root',     // Replace with your database password
-    database: 'portal_db' // Replace with your database name
+// Create a connection pool
+const pool = mysql.createPool({
+    host: 'localhost',  // Your database host
+    user: 'root',       // Your database user
+    password: 'root',       // Your database password
+    database: 'portal_db', // Your database name
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 });
 
-module.exports = db;
+// Export the promise-based pool
+module.exports = pool.promise();
