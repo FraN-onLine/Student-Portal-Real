@@ -43,7 +43,7 @@ function isAuthenticated(req, res, next) {
 // Serve static files (e.g., CSS, JS)
 app.use(express.static('public'));
 app.use(express.static('models'));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
 // EJS Setup
 app.set('view engine', 'ejs');
@@ -136,6 +136,9 @@ app.post('/login', (req, res) => {
             req.session.userName = user.name;
             req.session.userCourse = user.course;
             req.session.user = user;
+            req.session.address = user.address || '';
+            req.session.phone_number = user.phone_number || '';;
+            req.session.profile_picture = user.profile_picture || '/default-profile.png'
             res.redirect('/dashboard');
         });
     });
@@ -146,7 +149,8 @@ app.get('/dashboard', isAuthenticated, (req, res) => {
     const userId = req.session.userId;
 
     // Fetch the user's profile data from the database
-    const query = 'SELECT name, email, course FROM users WHERE id = ?';
+    const query = 'SELECT name, email, course, address, phone_number, profile_picture FROM users WHERE id = ?';
+
     db.query(query, [userId], (err, results) => {
         if (err) {
             console.error('Error fetching user data:', err);
@@ -268,23 +272,18 @@ const upload = multer({
 
 app.post('/dashboard/edit', upload.single('profile_picture'), (req, res) => {
     const { address, phone_number } = req.body;
-    const userId = req.session.user.id; // Assuming user ID is stored in session
+    const userId = req.session.user.id;
 
-    let profile_picture = req.session.user.profile_picture;
+    let profile_picture = req.session.user.profile_picture; // Retain old profile picture
     if (req.file) {
         profile_picture = `/uploads/${req.file.filename}`;
     }
 
     // Validation
-    if (address && address.length > 255) {
-        return res.status(400).send('Address must be under 255 characters.');
-    }
-
     if (phone_number && !/^\+?\d{10,15}$/.test(phone_number)) {
         return res.status(400).send('Phone number must be valid and between 10 to 15 digits.');
     }
 
-    // Build Update Query Dynamically
     const updates = [];
     const params = [];
     if (address) {
@@ -307,14 +306,13 @@ app.post('/dashboard/edit', upload.single('profile_picture'), (req, res) => {
     params.push(userId);
 
     const sql = `UPDATE users SET ${updates.join(', ')} WHERE id = ?`;
-
-    con.query(sql, params, (err, results) => {
+    db.query(sql, params, (err) => {
         if (err) {
             console.error('Error updating profile:', err);
             return res.status(500).send('An error occurred while updating your profile.');
         }
 
-        // Update session with new values
+        // Update session
         if (address) req.session.user.address = address;
         if (phone_number) req.session.user.phone_number = phone_number;
         if (req.file) req.session.user.profile_picture = profile_picture;
