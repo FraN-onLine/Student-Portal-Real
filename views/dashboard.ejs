@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -77,7 +78,7 @@
                 <% if (user.profile_picture) { %>
                     <img src="<%= user.profile_picture %>" alt="Profile Picture" class="img-thumbnail">
                 <% } else { %>
-                    <img src="/default-profile.png" alt="Default Profile Picture" class="img-thumbnail">
+                    <img src="uploads/default-profile.png" alt="Default Profile Picture" class="img-thumbnail">
                 <% } %>
                 <p class="text-center mt-3"><strong><%= user.name %></strong></p>
             </div>
