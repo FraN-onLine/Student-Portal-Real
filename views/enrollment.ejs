@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enrollment</title>
-    <!-- Include Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
         body {
@@ -50,6 +49,43 @@
             text-align: center;
             margin-top: 30px;
         }
+        .easter-egg-popup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .popup-content {
+            position: relative;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            max-width: 60%;
+            padding: 20px;
+        }
+        .close-popup-button {
+            display: block;
+            width: 100%;
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px;
+            font-size: 18px;
+            text-align: center;
+            border-radius: 4px;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+        .close-popup-button:hover {
+            background-color: #c82333;
+        }
+        
     </style>
 </head>
 <body>
@@ -71,7 +107,6 @@
             </ul>
         </div>
     </nav>
-    
 
     <div class="container">
         <h2 class="text-center mb-4">Enrollment Portal for <%= user.name %></h2>
@@ -83,7 +118,7 @@
             </div>
             <div class="card-body">
                 <% if (subjects.length > 0) { %>
-                    <form action="/enroll" method="POST">
+                    <form action="/enroll" method="POST" id="enrollForm">
                         <div class="form-group">
                             <label for="subjectId">Select a Subject</label>
                             <select name="subjectId" id="subjectId" class="form-control" required>
@@ -101,18 +136,31 @@
                 <% } %>
             </div>
         </div>
-    
-        <!-- Enrolled Subjects -->
+
+        <!-- Your Enrolled Subjects -->
         <div class="card subject-list">
             <div class="card-header">
                 Your Enrolled Subjects
             </div>
             <div class="card-body">
                 <% if (enrolledSubjects.length > 0) { %>
-                    <ul class="list-group">
+                    <!-- Search Input -->
+                    <div class="form-group">
+                        <label for="searchSubject">Search Subject:</label>
+                        <input 
+                            type="text" 
+                            id="searchSubject" 
+                            class="form-control" 
+                            placeholder="Type to search for a subject">
+                        <button id="searchButton" class="btn btn-primary mt-2">Search</button>
+
+                    </div>
+
+                    <!-- Enrolled Subjects List -->
+                    <ul id="subjectList" class="list-group">
                         <% enrolledSubjects.forEach(subject => { %>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <%= subject.name %> (<%= subject.course_code %>)
+                            <li class="list-group-item d-flex justify-content-between align-items-center subject-item">
+                                <span class="subject-name"><%= subject.course_code %> <%= subject.name %></span> 
                                 <form action="/unenroll" method="POST" class="d-inline" onsubmit="return confirmUnenroll();">
                                     <input type="hidden" name="subjectId" value="<%= subject.id %>">
                                     <button type="submit" class="btn confirmation-button">Unenroll</button>
@@ -125,19 +173,98 @@
                 <% } %>
             </div>
         </div>
-    
+
+        <!-- Easter Egg Video Popup -->
+        <div id="easterEggPopup" class="easter-egg-popup">
+            <div class="popup-content">
+                <video id="easterEggVideo" loop style="width: 100%; border-radius: 8px;">
+                    <source src="/videos/rawr.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+                <button id="closePopup" class="close-popup-button">Close</button>
+            </div>
+        </div>
+
         <div class="footer">
             <p><a href="/dashboard">Go to Dashboard</a></p>
         </div>
     </div>
-    
+
     <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const form = document.querySelector('form[action="/enroll"]');
+            const subjectSelect = document.getElementById('subjectId');
+            const popup = document.getElementById('easterEggPopup');
+            const closePopup = document.getElementById('closePopup');
+            const video = document.getElementById('easterEggVideo');
+
+            // Function to close the popup
+            function closeEasterEggPopup() {
+                popup.style.display = 'none';
+                video.pause();
+                video.currentTime = 0;
+
+                // Submit the form after closing
+                form.submit();
+            }
+
+            // Function to show the popup
+            function showEasterEggPopup() {
+                popup.style.display = 'flex';
+                video.play();
+            }
+
+            form.addEventListener("submit", function (e) {
+                const selectedOption = subjectSelect.options[subjectSelect.selectedIndex].text;
+                const targetSubject = "Database Systems (CMPSC 116) - Major";
+
+                // If the selected subject is the target one, trigger the popup
+                if (selectedOption === targetSubject) {
+                    e.preventDefault(); // Prevent immediate form submission
+                    showEasterEggPopup();
+                }
+            });
+
+            // Attach event listener to the close button
+            closePopup.addEventListener("click", closeEasterEggPopup);
+        });
+    </script>
+
+    <script>
+       
+            const searchInput = document.getElementById('searchSubject');
+            const searchButton = document.getElementById('searchButton'); // Your search button
+            const subjects = document.querySelectorAll('.subject-item');
+    
+            // Prevent the form submission and perform the search
+            document.getElementById('searchButton').addEventListener('click', function (event) {
+                console.log("uwu3");
+                event.preventDefault(); // Prevent page reload
+    
+                const query = searchInput.value.toLowerCase().trim();
+    
+                // Filter through subjects
+                subjects.forEach(subject => {
+                    const subjectName = subject.querySelector('.subject-name').textContent.toLowerCase();
+                    if (subjectName.includes(query)) {
+                        subject.style.setProperty('display', 'flex', 'important'); // Show matching subjects
+                        console.log("uwu");
+                    } else {
+                        subject.style.setProperty('display', 'none', 'important'); // Hide non-matching subjects
+                        console.log("ew");
+                    }
+                });
+            });
+      
+        // Optional: Confirmation for unenrolling
         function confirmUnenroll() {
             return confirm('Are you sure you want to unenroll from this subject?');
         }
     </script>
     
-    <!-- Include Bootstrap JS and dependencies -->
+    
+
+    
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>

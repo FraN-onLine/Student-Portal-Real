@@ -6,6 +6,9 @@ const app = express();
 const multer = require('multer');
 const path = require('path');
 
+// Serve static files (like videos, images, CSS, etc.) from the 'public' folder
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Middleware
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -38,7 +41,6 @@ function isAuthenticated(req, res, next) {
         res.redirect('/login'); // Redirect to login if not authenticated
     }
 }
-
 
 // Serve static files (e.g., CSS, JS)
 app.use(express.static('public'));
@@ -170,6 +172,9 @@ app.get('/dashboard', isAuthenticated, (req, res) => {
                 name: user.name,
                 email: user.email,
                 course: user.course,
+                address: user.address || '',
+                phone_number: user.phone_number || '',
+                profile_picture: user.profile_picture || '/default-profile.png',
                 enrolledSubjects: [] // Update this if enrolled subjects data is needed
             }
         });
@@ -256,34 +261,71 @@ app.get('/logout', (req, res) => {
         res.redirect('/login');
     });
 });
-// Multer Configuration for File Uploads
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'public/uploads/');
+    },
+    filename: function (req, file, cb) {
+        const ext = path.extname(file.originalname).toLowerCase(); // Get file extension
+        const name = path.basename(file.originalname, ext).replace(/\s+/g, '-').toLowerCase(); // Clean up file name
+        const uniqueSuffix = Date.now(); // Add timestamp for uniqueness
+        cb(null, `${name}-${uniqueSuffix}${ext}`); // Final filename: cleanname-timestamp.ext
+    }
+});
+
+
 const upload = multer({
-    dest: 'public/uploads/',
+    storage: storage,
     fileFilter: (req, file, cb) => {
         const allowedExtensions = ['.jpg', '.jpeg', '.png'];
         const ext = path.extname(file.originalname).toLowerCase();
         if (!allowedExtensions.includes(ext)) {
-            return cb(new Error('Only .jpg, .jpeg, and .png files are allowed!'));
+            req.fileValidationError = 'Only .jpg, .jpeg, and .png files are allowed!';
+            return cb(null, false); // Reject the file
         }
         cb(null, true);
     },
-    limits: { fileSize: 5 * 1024 * 1024 }, // Limit file size to 5 MB
+    limits: { fileSize: 5 * 1024 * 1024 } // 5 MB file size limit
 });
+
+
 
 app.post('/dashboard/edit', upload.single('profile_picture'), (req, res) => {
     const { address, phone_number } = req.body;
     const userId = req.session.user.id;
 
     let profile_picture = req.session.user.profile_picture; // Retain old profile picture
-    if (req.file) {
+    let errorMessage = ''; // To hold any error message
+
+    // Validate phone number
+    if (phone_number && !/^\+?\d{10,15}$/.test(phone_number)) {
+        errorMessage = 'Phone number must be valid and between 10 to 15 digits.';
+    }
+
+    // Check for upload errors from multer
+    if (req.fileValidationError) {
+        errorMessage = req.fileValidationError;
+    } else if (req.file) {
         profile_picture = `/uploads/${req.file.filename}`;
     }
 
-    // Validation
-    if (phone_number && !/^\+?\d{10,15}$/.test(phone_number)) {
-        return res.status(400).send('Phone number must be valid and between 10 to 15 digits.');
+    // If there is an error, render the dashboard with the error message
+    if (errorMessage) {
+        return res.render('dashboard', {
+            user: {
+                name: req.session.user.name,
+                email: req.session.user.email,
+                course: req.session.user.course,
+                address: req.session.user.address,
+                phone_number: req.session.user.phone_number,
+                profile_picture: req.session.user.profile_picture
+            },
+            errorMessage: errorMessage // Send error message to the form
+        });
     }
 
+    // Prepare fields to update
     const updates = [];
     const params = [];
     if (address) {
@@ -300,7 +342,10 @@ app.post('/dashboard/edit', upload.single('profile_picture'), (req, res) => {
     }
 
     if (updates.length === 0) {
-        return res.status(400).send('No valid fields to update.');
+        return res.render('dashboard', {
+            user: req.session.user,
+            errorMessage: 'No valid fields to update.'
+        });
     }
 
     params.push(userId);
@@ -309,7 +354,10 @@ app.post('/dashboard/edit', upload.single('profile_picture'), (req, res) => {
     db.query(sql, params, (err) => {
         if (err) {
             console.error('Error updating profile:', err);
-            return res.status(500).send('An error occurred while updating your profile.');
+            return res.render('dashboard', {
+                user: req.session.user,
+                errorMessage: 'An error occurred while updating your profile.'
+            });
         }
 
         // Update session
@@ -320,6 +368,8 @@ app.post('/dashboard/edit', upload.single('profile_picture'), (req, res) => {
         res.redirect('/dashboard');
     });
 });
+
+
 
 // Server Setup
 const PORT = process.env.PORT || 3000;

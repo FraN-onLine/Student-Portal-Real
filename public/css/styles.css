@@ -52,3 +52,24 @@ a {
 a:hover {
   text-decoration: underline;
 }
+
+.easter-egg-popup {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.popup-content {
+  position: relative;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 60%;
+}
