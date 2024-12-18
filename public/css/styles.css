@@ -73,3 +73,31 @@ a:hover {
   overflow: hidden;
   max-width: 60%;
 }
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .container {
+    width: 90%;
+    padding: 15px;
+  }
+
+  form {
+    padding: 15px;
+  }
+
+  .popup-content {
+    max-width: 90%;
+  }
+}
+
+@media (max-width: 480px) {
+  button {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+  }
+
+  p {
+    font-size: 12px;
+  }
+}
