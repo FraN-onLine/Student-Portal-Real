@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<% let message = ''; %>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -43,9 +42,9 @@
     <div class="form-container">
         <h2>Register</h2>
         
-        <!-- Display the error message if registration fails -->
+        <!-- Display the error or success message -->
         <% if (message) { %>
-            <div class="alert alert-danger" role="alert">
+            <div class="alert <%= message.includes('successful') ? 'alert-success' : 'alert-danger' %>">
                 <%= message %>
             </div>
         <% } %>
@@ -86,3 +85,6 @@
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
+
+
+
