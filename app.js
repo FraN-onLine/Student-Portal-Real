@@ -5,6 +5,7 @@ const bcrypt = require('bcrypt');
 const app = express();
 const multer = require('multer');
 const path = require('path');
+const router = express.Router();
 
 // Serve static files (like videos, images, CSS, etc.) from the 'public' folder
 app.use(express.static(path.join(__dirname, 'public')));
@@ -17,6 +18,36 @@ app.use(session({
     resave: false,
     saveUninitialized: true
 }));
+app.use(express.static('public'));
+app.use(express.static('models'));
+app.set('view engine', 'ejs');
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'public/uploads/');
+    },
+    filename: function (req, file, cb) {
+        const ext = path.extname(file.originalname).toLowerCase(); // Get file extension
+        const name = path.basename(file.originalname, ext).replace(/\s+/g, '-').toLowerCase(); // Clean up file name
+        const uniqueSuffix = Date.now(); // Add timestamp for uniqueness
+        cb(null, `${name}-${uniqueSuffix}${ext}`); // Final filename: cleanname-timestamp.ext
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    fileFilter: (req, file, cb) => {
+        const allowedExtensions = ['.jpg', '.jpeg', '.png'];
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (!allowedExtensions.includes(ext)) {
+            req.fileValidationError = 'Only .jpg, .jpeg, and .png files are allowed!';
+            return cb(null, false); // Reject the file
+        }
+        cb(null, true);
+    },
+    limits: { fileSize: 5 * 1024 * 1024 } // 5 MB file size limit
+});
 
 // MySQL database connection
 const db = mysql.createConnection({
@@ -42,14 +73,6 @@ function isAuthenticated(req, res, next) {
     }
 }
 
-// Serve static files (e.g., CSS, JS)
-app.use(express.static('public'));
-app.use(express.static('models'));
-app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
-
-// EJS Setup
-app.set('view engine', 'ejs');
-
 // Home Route
 app.get('/', (req, res) => {
     res.render('index');
@@ -64,9 +87,26 @@ app.get('/register', (req, res) => {
 app.post('/register', (req, res) => {
     const { name, email, password, course } = req.body;
 
+    // Initialize an error message variable
+    let errorMessage = '';
+
     // Basic validation
     if (!name || !email || !password || !course) {
-        return res.render('register', { message: 'All fields are required!' });
+        errorMessage = 'All fields are required!';
+    } else if (password.length > 16) {
+        // Additional validation for password length
+        errorMessage = 'Password must not exceed 16 characters.';
+    } else {
+        // Additional validation for email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.(com|net)$/i;
+        if (!emailRegex.test(email)) {
+            errorMessage = 'Email must end with a valid domain (.com or .net).';
+        }
+    }
+
+    // If there is an error message, re-render the register page
+    if (errorMessage) {
+        return res.render('register', { message: errorMessage });
     }
 
     // Check if email already exists in the database
@@ -86,17 +126,21 @@ app.post('/register', (req, res) => {
             }
 
             // Insert new user into the database
-            db.query('INSERT INTO users (name, email, password, course) VALUES (?, ?, ?, ?)', 
-                [name, email, hashedPassword, course], (err, result) => {
+            db.query(
+                'INSERT INTO users (name, email, password, course) VALUES (?, ?, ?, ?)', 
+                [name, email, hashedPassword, course], 
+                (err, result) => {
                     if (err) {
                         return res.render('register', { message: 'Registration failed. Please try again.' });
                     }
-                    // Successful registration, redirect to login page
-                    res.redirect('/login');
-                });
+                    // Successful registration
+                    res.render('register', { message: 'Registration successful!' });
+                }
+            );
         });
     });
 });
+
 
 // Login Page
 app.get('/login', (req, res) => {
@@ -140,7 +184,7 @@ app.post('/login', (req, res) => {
             req.session.user = user;
             req.session.address = user.address || '';
             req.session.phone_number = user.phone_number || '';;
-            req.session.profile_picture = user.profile_picture || '/default-profile.png'
+            req.session.profile_picture = user.profile_picture
             res.redirect('/dashboard');
         });
     });
@@ -262,34 +306,6 @@ app.get('/logout', (req, res) => {
     });
 });
 
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, 'public/uploads/');
-    },
-    filename: function (req, file, cb) {
-        const ext = path.extname(file.originalname).toLowerCase(); // Get file extension
-        const name = path.basename(file.originalname, ext).replace(/\s+/g, '-').toLowerCase(); // Clean up file name
-        const uniqueSuffix = Date.now(); // Add timestamp for uniqueness
-        cb(null, `${name}-${uniqueSuffix}${ext}`); // Final filename: cleanname-timestamp.ext
-    }
-});
-
-
-const upload = multer({
-    storage: storage,
-    fileFilter: (req, file, cb) => {
-        const allowedExtensions = ['.jpg', '.jpeg', '.png'];
-        const ext = path.extname(file.originalname).toLowerCase();
-        if (!allowedExtensions.includes(ext)) {
-            req.fileValidationError = 'Only .jpg, .jpeg, and .png files are allowed!';
-            return cb(null, false); // Reject the file
-        }
-        cb(null, true);
-    },
-    limits: { fileSize: 5 * 1024 * 1024 } // 5 MB file size limit
-});
-
-
 
 app.post('/dashboard/edit', upload.single('profile_picture'), (req, res) => {
     const { address, phone_number } = req.body;
@@ -301,6 +317,10 @@ app.post('/dashboard/edit', upload.single('profile_picture'), (req, res) => {
     // Validate phone number
     if (phone_number && !/^\+?\d{10,15}$/.test(phone_number)) {
         errorMessage = 'Phone number must be valid and between 10 to 15 digits.';
+    }
+
+    if (address.length > 50) {
+        errorMessage = 'Address must not exceed 50 characters.';
     }
 
     // Check for upload errors from multer
@@ -368,6 +388,43 @@ app.post('/dashboard/edit', upload.single('profile_picture'), (req, res) => {
         res.redirect('/dashboard');
     });
 });
+
+// Delete Account Route
+app.post('/delete-account', (req, res) => {
+    const userId = req.session.userId; // Assuming session stores the logged-in user ID
+
+    if (!userId) {
+        return res.status(403).render('dashboard', { errorMessage: 'You must be logged in to delete your account.' });
+    }
+
+    // Delete the user from the database
+    const deleteQuery = 'DELETE FROM users WHERE id = ?';
+
+    db.query(deleteQuery, [userId], (err, result) => {
+        if (err) {
+            console.error('Error deleting account:', err);
+            return res.status(500).render('dashboard', { errorMessage: 'An error occurred while deleting your account.' });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).render('dashboard', { errorMessage: 'User not found.' });
+        }
+
+        // Clear the session
+        req.session.destroy(err => {
+            if (err) {
+                console.error('Error clearing session:', err);
+                return res.status(500).render('dashboard', { errorMessage: 'An error occurred while logging out.' });
+            }
+
+            // Redirect to homepage or login page after account deletion
+            res.redirect('/');
+        });
+    });
+});
+
+
+module.exports = router;
 
 
 
