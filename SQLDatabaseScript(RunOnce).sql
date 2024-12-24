@@ -52,7 +52,8 @@ INSERT INTO subjects (name, type, course, course_code) VALUES
 ('Hitler and his world domination', 'Major', 'BSCS', 'CMPSC 420'),
 ('Get Freaky with Kim Jong Un', 'Major', 'BSCS', 'CMPSC 696'),
 ('Was 9-11 real?', 'Major', 'BSIT', 'IT 088'),
-('Bomb Creation', 'Major', 'BSIT', 'IT 999');
+('Bomb Creation', 'Major', 'BSIT', 'IT 999'),
+('The I-T G-I-R-L)', 'Major', 'BSIT', 'IT 6969');
 
 
 INSERT INTO subjects (name, type, course, course_code) VALUES
