@@ -1,3 +1,15 @@
+/* 
+CRUD Functionalities:
+Create - Make User
+Read - Display and get details
+Update - Update Details
+Delete - delete user
+
+in models/subjects.js
+Subjects display their own crud functionalities (aside from creation)
+each user can update and delete from subject list making use of sql queries
+*/
+
 const express = require('express');
 const mysql = require('mysql2');
 const session = require('express-session');
@@ -75,41 +87,41 @@ function isAuthenticated(req, res, next) {
 
 // Home Route
 app.get('/', (req, res) => {
-    res.render('index');
+    res.render('login', { message: '' });;
 });
 
-// Register Page
+// The register page
 app.get('/register', (req, res) => {
     res.render('register', { message: '' }); // Initial message is empty
 });
 
-// Handle Register Post Request
+// Handles the register post request 
 app.post('/register', (req, res) => {
     const { name, email, password, course } = req.body;
 
     // Initialize an error message variable
     let errorMessage = '';
 
-    // Basic validation
+    // rquires all fields
     if (!name || !email || !password || !course) {
         errorMessage = 'All fields are required!';
     } else if (password.length > 16) {
         // Additional validation for password length
         errorMessage = 'Password must not exceed 16 characters.';
     } else {
-        // Additional validation for email format
+        // Additional validation for email format, supposedly we'll allow more emails pero really difficult to implement each one
         const emailRegex = /^[^\s@]+@[^\s@]+\.(com|net)$/i;
         if (!emailRegex.test(email)) {
             errorMessage = 'Email must end with a valid domain (.com or .net).';
         }
     }
 
-    // If there is an error message, re-render the register page
+    // If there is an error message, rerender the register page
     if (errorMessage) {
         return res.render('register', { message: errorMessage });
     }
 
-    // Check if email already exists in the database
+    // Check if email already exists in the database to not cause reduduncys or overriding
     db.query('SELECT * FROM users WHERE email = ?', [email], (err, result) => {
         if (err) {
             return res.render('register', { message: 'An error occurred. Please try again later.' });
@@ -147,11 +159,11 @@ app.get('/login', (req, res) => {
     res.render('login', { message: '' }); // Initial message is empty
 });
 
-// Handle Login Post Request
+// handle Login Post req
 app.post('/login', (req, res) => {
     const { email, password } = req.body;
 
-    // Validate the input
+    // Requires both fields
     if (!email || !password) {
         return res.render('login', { message: 'Both fields are required.' });
     }
@@ -194,7 +206,7 @@ app.post('/login', (req, res) => {
 app.get('/dashboard', isAuthenticated, (req, res) => {
     const userId = req.session.userId;
 
-    // Fetch the user's profile data from the database
+    // Gets user's profile from the database
     const query = 'SELECT name, email, course, address, phone_number, profile_picture FROM users WHERE id = ?';
 
     db.query(query, [userId], (err, results) => {
@@ -224,12 +236,10 @@ app.get('/dashboard', isAuthenticated, (req, res) => {
         });
     });
 });
-
-// Assuming these helper functions interact with your database:
 const { getAvailableSubjects, getEnrolledSubjects, enrollUserInSubject, unenrollUserFromSubject } = require('./models/subjects');
 
 
-// GET /enrollment - Display enrollment page
+// Display enrollment page
 app.get('/enrollment', isAuthenticated, async (req, res) => {
     try {
         const user = req.session.user;
@@ -259,7 +269,7 @@ app.get('/enrollment', isAuthenticated, async (req, res) => {
 
 
 
-// POST /enroll - Handle subject enrollment
+//  Handle subject enrollment
 app.post('/enroll', isAuthenticated, async (req, res) => {
     const userId = req.session.user.id; // Get the logged-in user ID
     const subjectId = req.body.subjectId; // Get the subject ID from the form
@@ -278,7 +288,7 @@ app.post('/enroll', isAuthenticated, async (req, res) => {
 });
 
 
-// POST /unenroll - Handle subject unenrollment
+// Handle subject unenrollment
 app.post('/unenroll', isAuthenticated, async (req, res) => {
     const userId = req.session.user.id; // Get the logged-in user ID
     const subjectId = req.body.subjectId; // Get the subject ID from the form
@@ -311,8 +321,8 @@ app.post('/dashboard/edit', upload.single('profile_picture'), (req, res) => {
     const { address, phone_number } = req.body;
     const userId = req.session.user.id;
 
-    let profile_picture = req.session.user.profile_picture; // Retain old profile picture
-    let errorMessage = ''; // To hold any error message
+    let profile_picture = req.session.user.profile_picture; 
+    let errorMessage = '';
 
     // Validate phone number
     if (phone_number && !/^\+?\d{10,15}$/.test(phone_number)) {
@@ -323,7 +333,7 @@ app.post('/dashboard/edit', upload.single('profile_picture'), (req, res) => {
         errorMessage = 'Address must not exceed 50 characters.';
     }
 
-    // Check for upload errors from multer
+    // Check for upload errors from multer so we can update profile
     if (req.fileValidationError) {
         errorMessage = req.fileValidationError;
     } else if (req.file) {
